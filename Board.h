@@ -16,6 +16,7 @@ public:
 	void setPiece(int row, int col, Piece piece);
 
 	void printBoard() const;
+	std::string toString() const;
 	void clearBoard();
 
 	void changeTurn();
@@ -32,5 +33,6 @@ public:
 	std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> generateLegalMoves() const;
 
 	Piece* operator[](int index);
+	Board& operator=(const Board& other);
 };
 

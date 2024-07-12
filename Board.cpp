@@ -68,6 +68,20 @@ void Board::printBoard() const
 	//std::cout << "   a  b  c  d  e  f  g  h" << std::endl;
 }
 
+std::string Board::toString() const
+{
+	std::stringstream ss;
+	for (int i = 0; i < 8; i++) {
+		ss << 8 - i << "  ";
+		for (int j = 0; j < 8; j++) {
+			ss << board[i][j] << " ";
+		}
+		ss << std::endl;
+	}
+	ss << "   a b c d e f g h" << std::endl;
+	return ss.str();
+}
+
 bool Board::isWhiteTurn() const
 {
 	return whiteTurn;
@@ -289,4 +303,19 @@ Piece* Board::operator[](int index)
 		return nullptr;
 	}
 	return board[index];
+}
+
+Board& Board::operator=(const Board& other) {
+	if (this != &other) {
+		whiteTurn = other.whiteTurn;
+		castlingRights = other.castlingRights;
+		enPassantSquare = other.enPassantSquare;
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				board[i][j] = other.board[i][j];
+				board[i][j].setMyBoard(this);
+			}
+		}
+	}
+	return *this;
 }
