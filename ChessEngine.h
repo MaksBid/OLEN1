@@ -14,6 +14,7 @@ public:
 	~ChessEngine();
 
 	std::pair<std::pair<int, int>, std::pair<int, int>> bestMove(Board* board);
+	double minimax(Board* board, int depth, double* alpha, double* beta, bool maximizingPlayer);
 
 	double evaluateBoard(Board* board) const;
 };

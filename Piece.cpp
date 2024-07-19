@@ -73,6 +73,10 @@ void Piece::setPosition(int newRow, int newCol)
 
 std::vector<std::pair<int, int>> Piece::getMoves() const
 {
+	static const int bishopDirections[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -1} };
+	static const int rookDirections[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+	static const int knightMoves[8][2] = { {2, 1}, {2, -1}, {-2, 1}, {-2, -1}, {1, 2}, {1, -2}, {-1, 2}, {-1, -2} };
+	static const int kingMoves[8][2] = { {1, 0}, {1, 1}, {1, -1}, {-1, 0}, {-1, 1}, {-1, -1}, {0, 1}, {0, -1} };
 	std::vector<std::pair<int, int>> moves;
 	switch (tolower(pieceType)) {
 	case PAWN:
@@ -85,15 +89,14 @@ std::vector<std::pair<int, int>> Piece::getMoves() const
 		moves.push_back(std::make_pair(row + (color == WHITE ? -1 : 1), col - 1));
 		break;
 	case KNIGHT:
-		// Add knight moves
-		moves.push_back(std::make_pair(row + 2, col + 1));
-		moves.push_back(std::make_pair(row + 2, col - 1));
-		moves.push_back(std::make_pair(row - 2, col + 1));
-		moves.push_back(std::make_pair(row - 2, col - 1));
-		moves.push_back(std::make_pair(row + 1, col + 2));
-		moves.push_back(std::make_pair(row + 1, col - 2));
-		moves.push_back(std::make_pair(row - 1, col + 2));
-		moves.push_back(std::make_pair(row - 1, col - 2));
+		// Add knight moves		
+		for (const auto& move : knightMoves) {
+			int newRow = row + move[0], newCol = col + move[1];
+			if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+				moves.emplace_back(newRow, newCol);
+			}
+		}
+		break;
 		break;
 	case BISHOP:
 		// Add bishop moves
@@ -160,29 +163,29 @@ std::vector<std::pair<int, int>> Piece::getMoves() const
 		break;
 	case KING:
 		// Add king moves (including castling)
-		moves.push_back(std::make_pair(row + 1, col));
+		/*moves.push_back(std::make_pair(row + 1, col));
 		moves.push_back(std::make_pair(row + 1, col + 1));
 		moves.push_back(std::make_pair(row + 1, col - 1));
 		moves.push_back(std::make_pair(row - 1, col));
 		moves.push_back(std::make_pair(row - 1, col + 1));
 		moves.push_back(std::make_pair(row - 1, col - 1));
 		moves.push_back(std::make_pair(row, col + 1));
-		moves.push_back(std::make_pair(row, col - 1));
-		if (color == WHITE && row == 7 && col == 4) { // White king
-			if (myBoard->getCastlingRights() & 8) { // White kingside
-				moves.push_back(std::make_pair(7, 6));
-			}
-			if (myBoard->getCastlingRights() & 4) { // White queenside
-				moves.push_back(std::make_pair(7, 2));
+		moves.push_back(std::make_pair(row, col - 1));*/
+
+		for (const auto& move : kingMoves) {
+			int newRow = row + move[0], newCol = col + move[1];
+			if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+				moves.emplace_back(newRow, newCol);
 			}
 		}
+
+		if (color == WHITE && row == 7 && col == 4) { // White king
+			if (myBoard->getCastlingRights() & 8) moves.push_back(std::make_pair(7, 6)); // White kingside
+			if (myBoard->getCastlingRights() & 4) moves.push_back(std::make_pair(7, 2)); // White queenside
+		}
 		else if (color == BLACK && row == 0 && col == 4) { // Black king
-			if (myBoard->getCastlingRights() & 2) { // Black kingside
-				moves.push_back(std::make_pair(0, 6));
-			}
-			if (myBoard->getCastlingRights() & 1) { // Black queenside
-				moves.push_back(std::make_pair(0, 2));
-			}
+			if (myBoard->getCastlingRights() & 2) moves.push_back(std::make_pair(0, 6)); // Black kingside
+			if (myBoard->getCastlingRights() & 1) moves.push_back(std::make_pair(0, 2)); // Black queenside
 		}
 		break;
 	}

@@ -16,43 +16,18 @@ ChessEngine::~ChessEngine()
 
 std::pair<std::pair<int, int>, std::pair<int, int>> ChessEngine::bestMove(Board* board)
 {
-	std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> myLegalMoves = board->generateLegalMoves(),
-		opponentLegalMoves;
+	std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> myLegalMoves = board->generateLegalMoves();
 	std::vector<double> evaluations(myLegalMoves.size());
 	int bestMoveIndex = 0;
+	double alpha = -1000, beta = 1000;
 
 	for (int i = 0; i < myLegalMoves.size(); i++) {
 		Board tempBoard = *board;
 		tempBoard.movePiece(myLegalMoves[i].first.first, myLegalMoves[i].first.second, myLegalMoves[i].second.first, myLegalMoves[i].second.second);
-		evaluations[i] = evaluateBoard(&tempBoard);
-		opponentLegalMoves = tempBoard.generateLegalMoves(); // For every move, generate the opponent's legal moves
-		
-		for (int j = 0; j < opponentLegalMoves.size(); j++) {
-			Board tempBoard2 = tempBoard;
-			tempBoard2.movePiece(opponentLegalMoves[j].first.first, opponentLegalMoves[j].first.second, opponentLegalMoves[j].second.first, opponentLegalMoves[j].second.second);
-			double positionEval = evaluateBoard(&tempBoard2);
-
-			if (j == 0) {
-				evaluations[i] = positionEval;
-			}
-
-			if (myColor == 0) {
-				if (positionEval > evaluations[i]) { // If we found a better move that the opponent can make
-					evaluations[i] = positionEval; // Assign new evaluation (if we are black it means the greater the eval, the better for opponent
-				}
-			}
-			else {
-				if (positionEval < evaluations[i]) {
-					evaluations[i] = positionEval;
-				}
-			}
-		}
+		evaluations[i] = minimax(&tempBoard, 2, &alpha, &beta, tempBoard.isWhiteTurn()); // Here we pass depth of the search (currently 2)
 	}
 
 	for (int i = 0; i < evaluations.size(); i++) { // Finding best evaluation with respect to the color
-		/*std::cout << "Move: " << char(myLegalMoves[i].first.second + 'a') << 8 - myLegalMoves[i].first.first << " " 
-							  << char(myLegalMoves[i].second.second + 'a') << 8 - myLegalMoves[i].second.first << 
-			" Eval: " << evaluations[i] << std::endl;*/
 		if (myColor == 0) {
 			if (evaluations[i] < evaluations[bestMoveIndex]) {
 				bestMoveIndex = i;
@@ -68,14 +43,69 @@ std::pair<std::pair<int, int>, std::pair<int, int>> ChessEngine::bestMove(Board*
 	return myLegalMoves[bestMoveIndex];
 }
 
+double ChessEngine::minimax(Board* board, int depth, double* alpha, double* beta, bool maximizingPlayer)
+{
+	if (depth == 0) {
+		
+		return evaluateBoard(board);
+	}
+	Board tempBoard = *board;
+	std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> legalMoves = tempBoard.generateLegalMoves();
+
+	if (maximizingPlayer == WHITE) {
+		double maxEval = -1000;
+		for (int i = 0; i < legalMoves.size(); i++) {
+			double eval;
+			bool notCheck;
+			Board tempBoard2 = tempBoard;
+			if (tempBoard2.checkForCheck(WHITE)) { //
+				notCheck = 0;
+			}
+			else {
+				notCheck = 1;
+			}
+			tempBoard2.movePiece(legalMoves[i].first.first, legalMoves[i].first.second, legalMoves[i].second.first, legalMoves[i].second.second);
+			eval = minimax(&tempBoard2, depth - notCheck, alpha, beta, BLACK);
+			maxEval = std::max(maxEval, eval);
+			*alpha = std::max(*alpha, eval);
+			if (beta <= alpha) {
+				break;
+			}
+		}
+		return maxEval;
+	}
+	else {
+		double minEval = 1000;
+		for (int i = 0; i < legalMoves.size(); i++) {
+			double eval;
+			int notCheck;
+			Board tempBoard2 = tempBoard;
+			if (tempBoard2.checkForCheck(BLACK)) { // If a piece is captured, do not subtract depth
+				notCheck = 0;
+			}
+			else {
+				notCheck = 1;
+			}
+			tempBoard2.movePiece(legalMoves[i].first.first, legalMoves[i].first.second, legalMoves[i].second.first, legalMoves[i].second.second);
+			eval = minimax(&tempBoard2, depth - notCheck, alpha, beta, WHITE);
+			minEval = std::min(minEval, eval);
+			*beta = std::min(*beta, eval);
+			if (beta <= alpha) {
+				break;
+			}
+		}
+		return minEval;
+	}
+}
+
 double ChessEngine::evaluateBoard(Board* board) const
 {
 	std::srand(static_cast<unsigned int>(std::time(0)));
 	double evaluation = 0;
-	if (board->checkForCheckmate(1)) {
+	if (board->checkForCheckmate(WHITE)) {
 		return -1000;
 	}
-	else if (board->checkForCheckmate(0)) {
+	else if (board->checkForCheckmate(BLACK)) {
 		return 1000;
 	}
 	for (int i = 0; i < 8; i++) {
@@ -109,6 +139,6 @@ double ChessEngine::evaluateBoard(Board* board) const
 			}
 		}
 	}
-	int random_number = ((std::rand() % 100) / 1000) - 0.05;
+	int random_number = ((std::rand() % 100) / 1000) - 0.05; // Add a random number between -0.05 and 0.05
 	return evaluation + random_number;
 }

@@ -4,6 +4,7 @@
 #include <cctype>
 #include <algorithm>
 #include <sstream>
+
 class Board;
 #define WHITE 1
 #define BLACK 0

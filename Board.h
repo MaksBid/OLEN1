@@ -7,8 +7,11 @@ private:
 	bool whiteTurn = true;
 	uint8_t castlingRights = 15; // 00001111, 1st bit white king side, 2nd wQ, 3rd bK, 4th bQ
 	std::pair<int, int> enPassantSquare = std::make_pair(-1, -1); // If there is no en passant square, it is (-1, -1)
+	bool lastMoveCastling = false;
+	bool lastMoveEnPassant = false;
 public:
 	Board();
+	Board(std::string fen);
 	Board(const Board& other);
 	~Board();
 
@@ -29,6 +32,7 @@ public:
 	bool checkForCheckmate(int color);
 	bool checkForCheck(int color);
 	bool movePiece(int startRow, int startCol, int endRow, int endCol);
+	void unMovePiece(int startRow, int startCol, int endRow, int endCol, Piece capturedPiece/*, bool isCastling, bool isEnPassant*/);
 
 	std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> generateLegalMoves() const;
 

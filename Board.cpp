@@ -29,6 +29,59 @@ Board::Board()
 	board[7][5] = Piece(7, 5, BISHOP, WHITE, this);
 	board[7][6] = Piece(7, 6, KNIGHT, WHITE, this);
 	board[7][7] = Piece(7, 7, ROOK, WHITE, this);
+
+	whiteTurn = true;
+	castlingRights = 15; // 1111
+	enPassantSquare = std::make_pair(-1, -1);
+}
+
+Board::Board(std::string fen)
+{
+	std::istringstream ss(fen);
+	std::string s;
+	getline(ss, s, ' ');
+	int row = 0, col = 0;
+	for (int i = 0; i < s.size(); i++) {
+		if (s[i] == '/') {
+			row++;
+			col = 0;
+		}
+		else if (isdigit(s[i])) {
+			int num = s[i] - '0';
+			for (int j = 0; j < num; j++) {
+				board[row][col] = Piece(row, col, ' ', -1, this);
+				col++;
+			}
+		}
+		else {
+			board[row][col] = Piece(row, col, tolower(s[i]), isupper(s[i]), this);
+			col++;
+		}
+	}
+	getline(ss, s, ' ');
+	whiteTurn = s == "w" ? true : false;
+	getline(ss, s, ' ');
+	castlingRights = 0;
+	for (int i = 0; i < s.size(); i++) {
+		if (s[i] == 'K') 
+			castlingRights |= 8; // 1000
+		else if (s[i] == 'Q') 
+			castlingRights |= 4; // 0100
+		else if (s[i] == 'k') 
+			castlingRights |= 2; // 0010
+		else if (s[i] == 'q') 
+			castlingRights |= 1; // 0001
+	}
+	getline(ss, s, ' ');
+	if (s == "-") {
+		enPassantSquare = std::make_pair(-1, -1);
+	}
+	else {
+		int col = s[0] - 'a';
+		int row = 8 - (s[1] - '0');
+		enPassantSquare = std::make_pair(row, col);
+	}
+
 }
 
 Board::Board(const Board& other)
@@ -129,13 +182,9 @@ bool Board::checkForCheckmate(int color)
 {
 	if (!checkForCheck(color)) return false;
 
-	std::vector<std::pair<std::pair<int, int>, std::pair<int, int>>> legalMoves = generateLegalMoves();
+	auto legalMoves = generateLegalMoves();
 
-	if (legalMoves.size() == 0) {
-		return true;
-	}
-
-	return false;
+	return legalMoves.empty();
 }
 
 bool Board::checkForCheck(int color)
@@ -162,125 +211,129 @@ bool Board::checkForCheck(int color)
 }
 
 bool Board::movePiece(int startRow, int startCol, int endRow, int endCol)
-{
-	if (board[startRow][startCol].checkMove(endRow, endCol)) {
-		// Creating temporary board with the move already made to check if our king is attacked
-		Board tempBoard = *this;
+{	
+	if (!board[startRow][startCol].checkMove(endRow, endCol)) return false;
+	//bool isEnPassant = false, isCastling = false;
 
-		tempBoard.board[endRow][endCol] = tempBoard.board[startRow][startCol]; // Moving the piece
-		tempBoard.board[endRow][endCol].setPosition(endRow, endCol); // Updating the position of the piece
-		tempBoard.board[startRow][startCol] = Piece(startRow, startCol, ' ', -1, this); // Clearing the starting square
+	char movedPieceType = board[startRow][startCol].getPieceType();
+	bool movedPieceColor = board[startRow][startCol].getColor();
 
-		// If castling then move the rook too
-		if (board[startRow][startCol].getPieceType() == KING && abs(startCol - endCol) == 2) {
-			if (endCol == 2) { // Queen side castling
-				tempBoard.board[startRow][3] = tempBoard.board[startRow][0];
-				tempBoard.board[startRow][3].setPosition(startRow, 3);
-				tempBoard.board[startRow][0] = Piece(startRow, 0, ' ', -1, this);
-			}
-			else if (endCol == 6) { // King side castling
-				tempBoard.board[startRow][5] = tempBoard.board[startRow][7];
-				tempBoard.board[startRow][5].setPosition(startRow, 5);
-				tempBoard.board[startRow][7] = Piece(startRow, 7, ' ', -1, this);
-			}
-		}
-		if (board[startRow][startCol].getPieceType() == PAWN) { // Remove the pawn if en passant
-			if (endRow == enPassantSquare.first && endCol == enPassantSquare.second) {
-				tempBoard.board[startRow][endCol] = Piece(startRow, endCol, ' ', -1, this);
-			}
-		}
+	Piece capturedPiece = board[endRow][endCol]; // Save the piece that is being captured (in case move is illegal)
+	board[endRow][endCol] = board[startRow][startCol]; // Moving the piece
+	board[endRow][endCol].setPosition(endRow, endCol); // Updating the position of the piece
+	board[startRow][startCol] = Piece(startRow, startCol, ' ', -1, this); // Clearing the starting square
 
-		if (tempBoard.checkForCheck(board[startRow][startCol].getColor())) {
-			return false;
+	// If castling then move the rook too
+	if (movedPieceType == KING && abs(startCol - endCol) == 2 && startCol == 4) {
+		if (checkForCheck(movedPieceColor)) return false; // Can't castle if you are in check
+		//isCastling = true;
+		lastMoveCastling = true;
+		if (endCol == 2) { // Queen side castling
+			board[startRow][3] = board[startRow][0];
+			board[startRow][3].setPosition(startRow, 3);
+			board[startRow][0] = Piece(startRow, 0, ' ', -1, this);
 		}
-
-		char movedPieceType = board[startRow][startCol].getPieceType();
-
-		board[endRow][endCol] = board[startRow][startCol]; // Moving the piece
-		board[endRow][endCol].setPosition(endRow, endCol); // Updating the position of the piece
-		board[startRow][startCol] = Piece(startRow, startCol, ' ', -1, this); // Clearing the starting square
-		// If castling then move the rook too
-		if (movedPieceType == KING && abs(startCol - endCol) == 2) {
-			if (endCol == 2) { // Queen side castling
-				board[startRow][3] = board[startRow][0];
-				board[startRow][3].setPosition(startRow, 3);
-				board[startRow][0] = Piece(startRow, 0, ' ', -1, this);
-			}
-			else if (endCol == 6) { // King side castling
-				board[startRow][5] = board[startRow][7];
-				board[startRow][5].setPosition(startRow, 5);
-				board[startRow][7] = Piece(startRow, 7, ' ', -1, this);
-			}
+		else if (endCol == 6) { // King side castling
+			board[startRow][5] = board[startRow][7];
+			board[startRow][5].setPosition(startRow, 5);
+			board[startRow][7] = Piece(startRow, 7, ' ', -1, this);
 		}
-		if (movedPieceType == PAWN) { // Remove the pawn if en passant
-			if (endRow == enPassantSquare.first && endCol == enPassantSquare.second) {
-				board[startRow][endCol] = Piece(startRow, endCol, ' ', -1, this);
-			}
+	} else if (movedPieceType == PAWN) { // Remove the pawn if en passant
+		if (endRow == enPassantSquare.first && endCol == enPassantSquare.second) {
+			//isEnPassant = true;
+			lastMoveEnPassant = true;
+			board[startRow][endCol] = Piece(startRow, endCol, ' ', -1, this);
 		}
-		enPassantSquare = std::make_pair(-1, -1); // If a move is made, en passant is no longer available
-
-		if (movedPieceType == ROOK && // If rook moved, adjust castling var 
-			(startRow == 0 || startRow == 7) && 
-			(startCol == 0 || startCol == 7)) 
-		{
-			if (startRow == 0 && startCol == 0) { // a8 black rook
-				castlingRights &= 14; // 1110
-			}
-			else if (startRow == 0 && startCol == 7) { // h8 black rook
-				castlingRights &= 13; // 1101
-			}
-			else if (startRow == 7 && startCol == 0) { // a1 white rook
-				castlingRights &= 11; // 1011
-			}
-			else if (startRow == 7 && startCol == 7) { // h1 white rook
-				castlingRights &= 7; // 0111
-			}
-		}
-		else if ((movedPieceType == KING) &&
-			(startRow == 0 || startRow == 7) && 
-			(startCol == 4)) 
-		{
-			if (startRow == 0) {
-				castlingRights &= 12; // 1100, white king moved, no white castling
-			}
-			else if (startRow == 7) {
-				castlingRights &= 3; // 0011, black king moved, no black castling
-			}
-		}
-		else if (movedPieceType == PAWN) {
-			if (endRow == 0 || endRow == 7) {
-				board[endRow][endCol].setPieceType(QUEEN);
-			} // If moved two tiles, set en passant as available
-			else if (abs(endRow - startRow) == 2) {
-				enPassantSquare = std::make_pair((startRow + endRow) / 2, startCol);
-			}
-		}
-		
-		changeTurn();
-		
-		return true;
 	}
-	else {
+
+	if (checkForCheck(movedPieceColor)) {
+		//board[startRow][startCol] = board[endRow][endCol];
+		//board[startRow][startCol].setPosition(startRow, startCol);
+		//board[endRow][endCol] = capturedPiece;
+
+		//if (isCastling) {
+		//	if (endCol == 2) { // Queen side castling
+		//		board[startRow][0] = board[startRow][3];
+		//		board[startRow][0].setPosition(startRow, 0);
+		//		board[startRow][3] = Piece(startRow, 3, ' ', -1, this);
+		//	}
+		//	else if (endCol == 6) { // King side castling
+		//		board[startRow][7] = board[startRow][5];
+		//		board[startRow][7].setPosition(startRow, 7);
+		//		board[startRow][5] = Piece(startRow, 5, ' ', -1, this);
+		//	}
+		//}
+		//else if (isEnPassant) {
+		//	board[startRow][endCol] = Piece(startRow, endCol, PAWN, 1 - board[startRow][startCol].getColor(), this);
+		//}
+		unMovePiece(startRow, startCol, endRow, endCol, capturedPiece/*, isCastling, isEnPassant*/);
 		return false;
 	}
+	enPassantSquare = std::make_pair(-1, -1); // If a move is made, en passant is no longer available
+
+	if (movedPieceType == ROOK && // If rook moved, adjust castling var 
+		(startRow == 0 || startRow == 7) &&
+		(startCol == 0 || startCol == 7))
+	{
+		if (startRow == 0 && startCol == 0) { // a8 black rook
+			castlingRights &= 14; // 1110
+		}
+		else if (startRow == 0 && startCol == 7) { // h8 black rook
+			castlingRights &= 13; // 1101
+		}
+		else if (startRow == 7 && startCol == 0) { // a1 white rook
+			castlingRights &= 11; // 1011
+		}
+		else if (startRow == 7 && startCol == 7) { // h1 white rook
+			castlingRights &= 7; // 0111
+		}
+	}
+	else if ((movedPieceType == KING) &&
+		(startRow == 0 || startRow == 7) &&
+		(startCol == 4))
+	{
+		if (startRow == 0) {
+			castlingRights &= 12; // 1100, white king moved, no white castling
+		}
+		else if (startRow == 7) {
+			castlingRights &= 3; // 0011, black king moved, no black castling
+		}
+	}
+	else if (movedPieceType == PAWN) {
+		if (endRow == 0 || endRow == 7) {
+			board[endRow][endCol].setPieceType(QUEEN);
+		} // If moved two tiles, set en passant as available
+		else if (abs(endRow - startRow) == 2) {
+			enPassantSquare = std::make_pair((startRow + endRow) / 2, startCol);
+		}
+	}
+
+	changeTurn();
+
+	return true;
+	
 }
 
 std::vector<std::pair<std::pair<int, int>, std::pair<int,int>>> Board::generateLegalMoves() const
 {
-	std::vector< // A vector
-		std::pair<std::pair<int,int>, std::pair<int,int>> // Basically 2x2 matrix
-	> legalMoves, pseudoLegalMoves;
+	std::vector<std::pair<std::pair<int,int>, std::pair<int,int>>> legalMoves, pseudoLegalMoves; // Basically 2x2 matrix
+	legalMoves.reserve(100);
+	pseudoLegalMoves.reserve(200);
+
 	for (int i = 0; i < 8; i++) { // Get all possible moves for all pieces of our color
 		for (int j = 0; j < 8; j++) {
-			if (board[i][j].getColor() == -1) continue; // If there is no piece on the square
-			if (board[i][j].getColor() != whiteTurn) continue; // If the piece is not the same color as the player's turn
-			std::vector<std::pair<int, int>> moves = board[i][j].getMoves(); // Get all moves for the piece
+			const Piece& piece = board[i][j];
+			if (piece.getColor() == -1) continue; // If there is no piece on the square
+			if (piece.getColor() != whiteTurn) continue; // If the piece is not the same color as the player's turn
+
+			std::vector<std::pair<int, int>> moves = piece.getMoves(); // Get all moves for the piece
 			for (int k = 0; k < moves.size(); k++) { // For every received move, add it to the list: <from<row,col>, to<row,col>>
 				pseudoLegalMoves.push_back(std::make_pair(std::make_pair(i, j), moves[k])); // Add the move to the list
 			}
 		}
 	}
 
+	
 	for (int i = 0; i < pseudoLegalMoves.size(); i++) { // For every pseudo legal move, check if it is legal
 		Board tempBoard = *this;
 		int startRow = pseudoLegalMoves[i].first.first;
@@ -290,10 +343,36 @@ std::vector<std::pair<std::pair<int, int>, std::pair<int,int>>> Board::generateL
 
 		if (tempBoard.movePiece(startRow, startCol, endRow, endCol)) {
 			legalMoves.push_back(pseudoLegalMoves[i]);
+			//tempBoard.unMovePiece(startRow, startCol, endRow, endCol, tempBoard[endRow][endCol]);
 		}
 	}
 
 	return legalMoves;
+}
+
+void Board::unMovePiece(int startRow, int startCol, int endRow, int endCol, Piece capturedPiece)
+{
+	board[startRow][startCol] = board[endRow][endCol];
+	board[startRow][startCol].setPosition(startRow, startCol);
+	board[endRow][endCol] = capturedPiece;
+
+	if (lastMoveCastling) {
+		if (endCol == 2) { // Queen side castling
+			board[startRow][0] = board[startRow][3];
+			board[startRow][0].setPosition(startRow, 0);
+			board[startRow][3] = Piece(startRow, 3, ' ', -1, this);
+		}
+		else if (endCol == 6) { // King side castling
+			board[startRow][7] = board[startRow][5];
+			board[startRow][7].setPosition(startRow, 7);
+			board[startRow][5] = Piece(startRow, 5, ' ', -1, this);
+		}
+		lastMoveCastling = false;
+	}
+	else if (lastMoveEnPassant) {
+		board[startRow][endCol] = Piece(startRow, endCol, PAWN, 1 - board[startRow][startCol].getColor(), this);
+		lastMoveEnPassant = false;
+	}
 }
 
 Piece* Board::operator[](int index)
