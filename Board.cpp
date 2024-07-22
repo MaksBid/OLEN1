@@ -1,5 +1,14 @@
 #include "Board.h"
 
+void Board::logAction(const std::string& message) const
+{
+	std::ofstream logFile("logBoard.txt", std::ios_base::app); // Open in append mode
+	if (logFile.is_open())
+	{
+		logFile << message << std::endl;
+	}
+}
+
 Board::Board()
 {
 	board[0][0] = Piece(0, 0, ROOK, BLACK, this);
@@ -213,7 +222,6 @@ bool Board::checkForCheck(int color)
 bool Board::movePiece(int startRow, int startCol, int endRow, int endCol)
 {	
 	if (!board[startRow][startCol].checkMove(endRow, endCol)) return false;
-	//bool isEnPassant = false, isCastling = false;
 
 	char movedPieceType = board[startRow][startCol].getPieceType();
 	bool movedPieceColor = board[startRow][startCol].getColor();
@@ -226,7 +234,6 @@ bool Board::movePiece(int startRow, int startCol, int endRow, int endCol)
 	// If castling then move the rook too
 	if (movedPieceType == KING && abs(startCol - endCol) == 2 && startCol == 4) {
 		if (checkForCheck(movedPieceColor)) return false; // Can't castle if you are in check
-		//isCastling = true;
 		lastMoveCastling = true;
 		if (endCol == 2) { // Queen side castling
 			board[startRow][3] = board[startRow][0];
@@ -240,33 +247,13 @@ bool Board::movePiece(int startRow, int startCol, int endRow, int endCol)
 		}
 	} else if (movedPieceType == PAWN) { // Remove the pawn if en passant
 		if (endRow == enPassantSquare.first && endCol == enPassantSquare.second) {
-			//isEnPassant = true;
 			lastMoveEnPassant = true;
 			board[startRow][endCol] = Piece(startRow, endCol, ' ', -1, this);
 		}
 	}
 
 	if (checkForCheck(movedPieceColor)) {
-		//board[startRow][startCol] = board[endRow][endCol];
-		//board[startRow][startCol].setPosition(startRow, startCol);
-		//board[endRow][endCol] = capturedPiece;
-
-		//if (isCastling) {
-		//	if (endCol == 2) { // Queen side castling
-		//		board[startRow][0] = board[startRow][3];
-		//		board[startRow][0].setPosition(startRow, 0);
-		//		board[startRow][3] = Piece(startRow, 3, ' ', -1, this);
-		//	}
-		//	else if (endCol == 6) { // King side castling
-		//		board[startRow][7] = board[startRow][5];
-		//		board[startRow][7].setPosition(startRow, 7);
-		//		board[startRow][5] = Piece(startRow, 5, ' ', -1, this);
-		//	}
-		//}
-		//else if (isEnPassant) {
-		//	board[startRow][endCol] = Piece(startRow, endCol, PAWN, 1 - board[startRow][startCol].getColor(), this);
-		//}
-		unMovePiece(startRow, startCol, endRow, endCol, capturedPiece/*, isCastling, isEnPassant*/);
+		unMovePiece(startRow, startCol, endRow, endCol, capturedPiece);
 		return false;
 	}
 	enPassantSquare = std::make_pair(-1, -1); // If a move is made, en passant is no longer available
@@ -333,17 +320,20 @@ std::vector<std::pair<std::pair<int, int>, std::pair<int,int>>> Board::generateL
 		}
 	}
 
-	
+	Board tempBoard = *this;
 	for (int i = 0; i < pseudoLegalMoves.size(); i++) { // For every pseudo legal move, check if it is legal
-		Board tempBoard = *this;
+		//Board tempBoard = *this;
 		int startRow = pseudoLegalMoves[i].first.first;
 		int startCol = pseudoLegalMoves[i].first.second;
 		int endRow = pseudoLegalMoves[i].second.first;
 		int endCol = pseudoLegalMoves[i].second.second;
-
+		//const std::string logString = std::to_string(startRow) + std::to_string(startCol) + std::to_string(endRow) + std::to_string(endCol);
+		//logAction(logString);
+		assert(startRow >= 0 && startRow < 8 && startCol >= 0 && startCol < 8 && endRow >= 0 && endRow < 8 && endCol >= 0 && endCol < 8);
+		Piece capturedPiece = tempBoard[endRow][endCol];
 		if (tempBoard.movePiece(startRow, startCol, endRow, endCol)) {
 			legalMoves.push_back(pseudoLegalMoves[i]);
-			//tempBoard.unMovePiece(startRow, startCol, endRow, endCol, tempBoard[endRow][endCol]);
+			tempBoard.unMovePiece(startRow, startCol, endRow, endCol, capturedPiece);
 		}
 	}
 

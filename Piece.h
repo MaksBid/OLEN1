@@ -4,6 +4,8 @@
 #include <cctype>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
+#include <assert.h>
 
 class Board;
 #define WHITE 1
@@ -28,6 +30,9 @@ private:
 public:
 	Piece();
 	Piece(int row, int col, char pieceType, int color, Board* myBoard);
+	Piece(const Piece& other);
+
+	Piece& operator=(const Piece& other);
 
 	char getPieceType() const;
 	int getColor() const;

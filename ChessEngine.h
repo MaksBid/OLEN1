@@ -8,6 +8,9 @@ class ChessEngine
 {
 private:
 	int myColor;
+	int depth = 2;
+
+    void logAction(const std::string&);
 public:
 	ChessEngine();
 	ChessEngine(int color);

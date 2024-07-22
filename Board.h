@@ -9,6 +9,8 @@ private:
 	std::pair<int, int> enPassantSquare = std::make_pair(-1, -1); // If there is no en passant square, it is (-1, -1)
 	bool lastMoveCastling = false;
 	bool lastMoveEnPassant = false;
+
+	void logAction(const std::string&) const;
 public:
 	Board();
 	Board(std::string fen);

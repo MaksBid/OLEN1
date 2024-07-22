@@ -15,6 +15,27 @@ Piece::Piece(int row, int col, char pieceType, int color, Board* newBoard) : row
 	myBoard = newBoard;
 }
 
+Piece::Piece(const Piece& other)
+{
+	row = other.row;
+	col = other.col;
+	pieceType = other.pieceType;
+	color = other.color;
+	myBoard = other.myBoard;
+}
+
+Piece& Piece::operator=(const Piece& other)
+{
+	if (this != &other) {
+		pieceType = other.pieceType;
+		color = other.color;
+		row = other.row;
+		col = other.col;
+		myBoard = other.myBoard;
+	}
+	return *this;
+}
+
 char Piece::getPieceType() const
 {
 	return pieceType;
@@ -78,63 +99,95 @@ std::vector<std::pair<int, int>> Piece::getMoves() const
 	static const int knightMoves[8][2] = { {2, 1}, {2, -1}, {-2, 1}, {-2, -1}, {1, 2}, {1, -2}, {-1, 2}, {-1, -2} };
 	static const int kingMoves[8][2] = { {1, 0}, {1, 1}, {1, -1}, {-1, 0}, {-1, 1}, {-1, -1}, {0, 1}, {0, -1} };
 	std::vector<std::pair<int, int>> moves;
+	int i = 1;
 	switch (tolower(pieceType)) {
 	case PAWN:
-		// Add pawn moves (including en passant)
 		moves.push_back(std::make_pair(row + (color == WHITE ? -1 : 1), col)); // Normal move
+
 		if ((row == 6 && color == WHITE) || (row == 1 && color == BLACK)) { // First move from 2nd or 7th rank
 			moves.push_back(std::make_pair(row + (color == WHITE ? -2 : 2), col));
 		}
-		moves.push_back(std::make_pair(row + (color == WHITE ? -1 : 1), col + 1)); // Captures
-		moves.push_back(std::make_pair(row + (color == WHITE ? -1 : 1), col - 1));
+
+		if (col + 1 < 8) {
+			moves.push_back(std::make_pair(row + (color == WHITE ? -1 : 1), col + 1)); // Captures
+		}
+		if (col - 1 >= 0) {
+			moves.push_back(std::make_pair(row + (color == WHITE ? -1 : 1), col - 1));
+		}
 		break;
 	case KNIGHT:
-		// Add knight moves		
 		for (const auto& move : knightMoves) {
 			int newRow = row + move[0], newCol = col + move[1];
 			if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
 				moves.emplace_back(newRow, newCol);
 			}
 		}
-		break;
+
+
+		/*if (row + 2 < 8) {
+			if (col + 1 < 8)
+				moves.push_back(std::make_pair(row + 2, col + 1));
+			if (col - 1 >= 0)
+				moves.push_back(std::make_pair(row + 2, col - 1));
+		}
+		if (row - 2 >= 0) {
+			if (col + 1 < 8)
+				moves.push_back(std::make_pair(row - 2, col + 1));
+			if (col - 1 >= 0)
+				moves.push_back(std::make_pair(row - 2, col - 1));
+		}
+		if (row + 1 < 8) {
+			if (col + 2 < 8)
+				moves.push_back(std::make_pair(row + 1, col + 2));
+			if (col - 2 >= 0)
+				moves.push_back(std::make_pair(row + 1, col - 2));
+		}
+		if (row - 1 >= 0) {
+			if (col + 2 < 8)
+				moves.push_back(std::make_pair(row - 1, col + 2));
+			if (col - 2 >= 0)
+				moves.push_back(std::make_pair(row - 1, col - 2));
+		}*/
+
+
+		/*moves.push_back(std::make_pair(row + 2, col + 1));
+		moves.push_back(std::make_pair(row + 2, col - 1));
+		moves.push_back(std::make_pair(row - 2, col + 1));
+		moves.push_back(std::make_pair(row - 2, col - 1));
+		moves.push_back(std::make_pair(row + 1, col + 2));
+		moves.push_back(std::make_pair(row + 1, col - 2));
+		moves.push_back(std::make_pair(row - 1, col + 2));
+		moves.push_back(std::make_pair(row - 1, col - 2));*/
 		break;
 	case BISHOP:
-		// Add bishop moves
-		for (int i = 1; i < 8; i++) {
-			if (row + i < 8 && col + i < 8) {
-				moves.push_back(std::make_pair(row + i, col + i));
-			}
-			if (row + i < 8 && col - i >= 0) {
-				moves.push_back(std::make_pair(row + i, col - i));
-			}
-			if (row - i >= 0 && col + i < 8) {
-				moves.push_back(std::make_pair(row - i, col + i));
-			}
-			if (row - i >= 0 && col - i >= 0) {
-				moves.push_back(std::make_pair(row - i, col - i));
+		for (const auto& direction : bishopDirections) {
+			int newRow = row + direction[0], newCol = col + direction[1];
+			while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+				moves.emplace_back(newRow, newCol);
+				if (myBoard->getPiece(newRow, newCol).getColor() != -1) {
+					break;
+				}
+				newRow += direction[0];
+				newCol += direction[1];
 			}
 		}
 		break;
 	case ROOK:
-		// Add rook moves
-		for (int i = 1; i < 8; i++) {
-			if (row + i < 8) {
-				moves.push_back(std::make_pair(row + i, col));
-			}
-			if (row - i >= 0) {
-				moves.push_back(std::make_pair(row - i, col));
-			}
-			if (col + i < 8) {
-				moves.push_back(std::make_pair(row, col + i));
-			}
-			if (col - i >= 0) {
-				moves.push_back(std::make_pair(row, col - i));
+		for (const auto& direction : rookDirections) {
+			int newRow = row + direction[0], newCol = col + direction[1];
+			while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+				moves.emplace_back(newRow, newCol);
+				if (myBoard->getPiece(newRow, newCol).getColor() != -1) {
+					break;
+				}
+				newRow += direction[0];
+				newCol += direction[1];
 			}
 		}
 		break;
 	case QUEEN:
 		// Add queen moves
-		for (int i = 1; i < 8; i++) {
+		/*for (int i = 1; i < 8; i++) {
 			if (row + i < 8 && col + i < 8) {
 				moves.push_back(std::make_pair(row + i, col + i));
 			}
@@ -159,25 +212,58 @@ std::vector<std::pair<int, int>> Piece::getMoves() const
 			if (col - i >= 0) {
 				moves.push_back(std::make_pair(row, col - i));
 			}
+		}*/
+		for (const auto& direction : bishopDirections) {
+			int newRow = row + direction[0], newCol = col + direction[1];
+			while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+				moves.emplace_back(newRow, newCol);
+				if (myBoard->getPiece(newRow, newCol).getColor() != -1) {
+					break;
+				}
+				newRow += direction[0];
+				newCol += direction[1];
+			}
+		}
+		for (const auto& direction : rookDirections) {
+			int newRow = row + direction[0], newCol = col + direction[1];
+			while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+				moves.emplace_back(newRow, newCol);
+				if (myBoard->getPiece(newRow, newCol).getColor() != -1) {
+					break;
+				}
+				newRow += direction[0];
+				newCol += direction[1];
+			}
 		}
 		break;
 	case KING:
-		// Add king moves (including castling)
-		/*moves.push_back(std::make_pair(row + 1, col));
-		moves.push_back(std::make_pair(row + 1, col + 1));
-		moves.push_back(std::make_pair(row + 1, col - 1));
-		moves.push_back(std::make_pair(row - 1, col));
-		moves.push_back(std::make_pair(row - 1, col + 1));
-		moves.push_back(std::make_pair(row - 1, col - 1));
-		moves.push_back(std::make_pair(row, col + 1));
-		moves.push_back(std::make_pair(row, col - 1));*/
-
-		for (const auto& move : kingMoves) {
-			int newRow = row + move[0], newCol = col + move[1];
-			if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-				moves.emplace_back(newRow, newCol);
-			}
+		//moves.push_back(std::make_pair(row + 1, col));
+		//moves.push_back(std::make_pair(row + 1, col + 1));
+		//moves.push_back(std::make_pair(row + 1, col - 1));
+		//moves.push_back(std::make_pair(row - 1, col));
+		//moves.push_back(std::make_pair(row - 1, col + 1));
+		//moves.push_back(std::make_pair(row - 1, col - 1));
+		//moves.push_back(std::make_pair(row, col + 1));
+		//moves.push_back(std::make_pair(row, col - 1));
+		if (row + 1 < 8) {
+			moves.push_back(std::make_pair(row + 1, col));
+			if (col + 1 < 8)
+				moves.push_back(std::make_pair(row + 1, col + 1));
+			if (col - 1 >= 0)
+				moves.push_back(std::make_pair(row + 1, col - 1));
 		}
+		if (row - 1 >= 0) {
+			moves.push_back(std::make_pair(row - 1, col));
+			if (col + 1 < 8)
+				moves.push_back(std::make_pair(row - 1, col + 1));
+			if (col - 1 >= 0)
+				moves.push_back(std::make_pair(row - 1, col - 1));
+		}
+		if (col + 1 < 8)
+			moves.push_back(std::make_pair(row, col + 1));
+		if (col - 1 >= 0)
+			moves.push_back(std::make_pair(row, col - 1));
+
 
 		if (color == WHITE && row == 7 && col == 4) { // White king
 			if (myBoard->getCastlingRights() & 8) moves.push_back(std::make_pair(7, 6)); // White kingside

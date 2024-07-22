@@ -1,5 +1,14 @@
 #include "ChessEngine.h"
 
+void ChessEngine::logAction(const std::string& message)
+{
+	std::ofstream logFile("log.txt", std::ios_base::app); // Open in append mode
+	if (logFile.is_open())
+	{
+		logFile << message << std::endl;
+	}
+}
+
 ChessEngine::ChessEngine()
 {
 	myColor = 0;
@@ -24,7 +33,7 @@ std::pair<std::pair<int, int>, std::pair<int, int>> ChessEngine::bestMove(Board*
 	for (int i = 0; i < myLegalMoves.size(); i++) {
 		Board tempBoard = *board;
 		tempBoard.movePiece(myLegalMoves[i].first.first, myLegalMoves[i].first.second, myLegalMoves[i].second.first, myLegalMoves[i].second.second);
-		evaluations[i] = minimax(&tempBoard, 2, &alpha, &beta, tempBoard.isWhiteTurn()); // Here we pass depth of the search (currently 2)
+		evaluations[i] = minimax(&tempBoard, depth, &alpha, &beta, tempBoard.isWhiteTurn()); // Here we pass depth of the search (currently 2)
 	}
 
 	for (int i = 0; i < evaluations.size(); i++) { // Finding best evaluation with respect to the color
@@ -58,7 +67,7 @@ double ChessEngine::minimax(Board* board, int depth, double* alpha, double* beta
 			double eval;
 			bool notCheck;
 			Board tempBoard2 = tempBoard;
-			if (tempBoard2.checkForCheck(WHITE)) { //
+			if (tempBoard2.checkForCheck(WHITE)) { // If a piece is captured, do not subtract depth
 				notCheck = 0;
 			}
 			else {
