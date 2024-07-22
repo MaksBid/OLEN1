@@ -46,7 +46,7 @@ OLEN1 is a simple chess engine written in C++. At the moment it uses depth 2 min
     ./chess_engine
     ```
 
-2. Connect it to your UCI-compatible GUI. Follow the instructions of your specific GUI to add a new UCI engine and point it to the `chess_engine` executable.
+2. Connect it to your UCI-compatible GUI. Follow the instructions of your specific GUI to add a new UCI engine and point it to the `chess_engine` executable. You can also use the engine in console by typing `cli` instead of `uci`.
 
 ## UCI Commands
 
